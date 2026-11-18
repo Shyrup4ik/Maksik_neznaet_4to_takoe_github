@@ -1,0 +1,33 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# --- Виртуальные окружения ---
+venv/
+.venv/
+env/
+
+# --- IDE / ОС ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Секреты ---
+.env
+.streamlit/secrets.toml
+
+# --- Скачанные данные (собираются заново: collect_moex.py, collect_girbo.py) ---
+data/raw/*
+!data/raw/.gitkeep
+
+# --- Собранный датасет (build_dataset.py) ---
+data/dataset.csv
+
+# --- Обученные модели и отчёты (train.py) ---
+models/*
+!models/.gitkeep
