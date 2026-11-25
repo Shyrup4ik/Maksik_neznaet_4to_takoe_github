@@ -1,4 +1,5 @@
 pip install -r requirements.txt
+python -m pytest -q tests || exit /b 1
 python collect_moex.py || exit /b 1
 python collect_girbo.py || exit /b 1
 python build_dataset.py || exit /b 1

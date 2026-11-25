@@ -16,6 +16,7 @@ DYN_FEATS = ["d_equity_ratio", "d_current_ratio", "d_debt_to_assets", "d_roa",
              "rev_growth", "asset_growth", "d_interest_coverage"]
 MKT_FEATS = ["mkt_price_min", "mkt_price_med", "mkt_yield_max", "mkt_yield_med",
              "mkt_spread", "mkt_price_chg_3m", "mkt_vol_3m", "mkt_log_turnover"]
+MKT_ALL = MKT_FEATS
 RAT_FEATS = ["rating_num", "rating_chg_6m"]
 HIST_FEATS = ["had_event_12m"]
 ALTMAN_X = ["X1_wc_ta", "X2_re_ta", "X3_ebit_ta", "X4_eq_tl"]
@@ -54,32 +55,61 @@ def _div(a, b):
     return a / b if (b is not None and np.isfinite(b) and b != 0 and np.isfinite(a)) else np.nan
 
 
+FLOW_CODES = ["2110", "2120", "2200", "2300", "2320", "2330", "2400"]   # потоки (ОФР) — нужны за 12 мес.
+KEY_LINES = {"1600": "Баланс", "1200": "Оборотные активы", "1500": "Краткосрочные обязательства",
+             "1300": "Капитал", "1370": "Нераспределённая прибыль", "1410": "Долгосрочные займы",
+             "1510": "Краткосрочные займы", "2110": "Выручка", "2300": "Прибыль до налога",
+             "2330": "Проценты к уплате", "2400": "Чистая прибыль"}
+
+
+def missing_lines(cur):
+    """Ключевые строки отчёта, которых нет (пусто ≠ 0)."""
+    return [f"{c} {t}" for c, t in KEY_LINES.items() if not np.isfinite(_g(cur, c))]
+
+
 def ratios(cur):
-    """cur — dict со строками c1600, c1200 … Возвращает dict коэффициентов."""
+    """cur — dict со строками c1600, c1200 … (потоки — за 12 месяцев). Возвращает dict коэффициентов.
+
+    Пустая строка отчёта — это пропуск (NaN), а не ноль: коэффициент, который от неё зависит,
+    тоже становится пропуском и дальше обрабатывается моделью явно (медиана + флаг пропуска).
+    Исключения: долг = сумма строк 1410 и 1510, если заполнена хотя бы одна (вторая считается 0);
+    EBIT = прибыль до налога + проценты; без строки 2330 EBIT ≈ прибыль до налога,
+    а покрытие процентов не считается."""
     TA, CA, CL = _g(cur, 1600), _g(cur, 1200), _g(cur, 1500)
     inv, cash, fin = _g(cur, 1210), _g(cur, 1250), _g(cur, 1240)
     EQ, RE = _g(cur, 1300), _g(cur, 1370)
     LT, ST = _g(cur, 1400), _g(cur, 1500)
-    LTD, STD = np.nan_to_num(_g(cur, 1410)), np.nan_to_num(_g(cur, 1510))
+    LTD, STD = _g(cur, 1410), _g(cur, 1510)
     REV, EBT, INT, NI = _g(cur, 2110), _g(cur, 2300), _g(cur, 2330), _g(cur, 2400)
     INT = abs(INT) if np.isfinite(INT) else np.nan
     TL = np.nansum([LT, ST]) if (np.isfinite(LT) or np.isfinite(ST)) else (TA - EQ)
-    EBIT = EBT + (INT if np.isfinite(INT) else 0) if np.isfinite(EBT) else np.nan
-    debt = LTD + STD
-    liquid = np.nansum([cash, fin])
+    EBIT = (EBT + (INT if np.isfinite(INT) else 0.0)) if np.isfinite(EBT) else np.nan
+    debt = np.nansum([LTD, STD]) if (np.isfinite(LTD) or np.isfinite(STD)) else np.nan
+    STDv = STD if np.isfinite(STD) else (0.0 if np.isfinite(debt) else np.nan)
+    liquid = np.nansum([cash, fin]) if (np.isfinite(cash) or np.isfinite(fin)) else np.nan
+    if not np.isfinite(INT) or not np.isfinite(EBIT):
+        cover = np.nan
+    elif INT > 0:
+        cover = float(np.clip(EBIT / INT, -10, 50))
+    else:                                   # подтверждённый ноль процентов
+        cover = 50.0 if EBIT > 0 else np.nan
+    if not (np.isfinite(debt) and np.isfinite(EBIT)):
+        nd_ebit = np.nan
+    elif EBIT > 0:
+        nd_ebit = float(np.clip((debt - np.nan_to_num(liquid)) / EBIT, -20, 50))
+    else:
+        nd_ebit = 50.0 if debt - np.nan_to_num(liquid) > 0 else 0.0
     r = {
         "current_ratio": _div(CA, CL),
-        "quick_ratio": _div(CA - np.nan_to_num(inv), CL),
+        "quick_ratio": _div(CA - inv, CL) if np.isfinite(inv) else np.nan,
         "cash_ratio": _div(liquid, CL),
         "equity_ratio": _div(EQ, TA),
         "debt_to_assets": _div(debt, TA),
-        "st_debt_share": _div(STD, debt) if debt > 0 else 0.0,
+        "st_debt_share": (STDv / debt) if (np.isfinite(debt) and debt > 0) else (0.0 if debt == 0 else np.nan),
         "roa": _div(NI, TA),
         "ebit_margin": _div(EBIT, REV),
-        "interest_coverage": (np.clip(_div(EBIT, INT), -10, 50) if (np.isfinite(INT) and INT > 0)
-                              else (50.0 if np.isfinite(EBIT) and EBIT > 0 else np.nan)),
-        "net_debt_to_ebit": (np.clip(_div(debt - liquid, EBIT), -20, 50) if (np.isfinite(EBIT) and EBIT > 0)
-                             else (50.0 if debt - liquid > 0 else 0.0) if np.isfinite(EBIT) else np.nan),
+        "interest_coverage": cover,
+        "net_debt_to_ebit": nd_ebit,
         "log_assets": np.log(TA * 1000) if np.isfinite(TA) and TA > 0 else np.nan,
         "neg_equity": float(EQ < 0) if np.isfinite(EQ) else np.nan,
         "X1_wc_ta": _div(CA - CL, TA),
@@ -94,8 +124,8 @@ def ratios(cur):
 def altman_z(r):
     """Z''-score Альтмана для развивающихся рынков (Altman, Hartzell, Peck, 1995).
     Z'' = 3.25 + 6.56·X1 + 3.26·X2 + 6.72·X3 + 1.05·X4.
-    Зоны: Z'' > 5.85 — безопасная, 4.15…5.85 — серая, < 4.15 — зона бедствия
-    (эквивалент 2.6 / 1.1 для версии без константы 3.25)."""
+    Зоны: Z'' > 5.85 — безопасная, 4.35…5.85 — серая, < 4.35 — зона бедствия
+    (это пороги 2.6 / 1.1 версии без константы, сдвинутые на 3.25)."""
     x = [r.get(k) for k in ALTMAN_X]
     if any(v is None or not np.isfinite(v) for v in x):
         return np.nan
@@ -106,7 +136,7 @@ def altman_z(r):
 def altman_zone(z):
     if z is None or not np.isfinite(z):
         return "нет данных"
-    return "безопасная" if z > 5.85 else ("серая" if z >= 4.15 else "бедствия")
+    return "безопасная" if z > 5.85 else ("серая" if z >= 4.35 else "бедствия")
 
 
 def dynamics(cur_r, prev_r, cur, prev):

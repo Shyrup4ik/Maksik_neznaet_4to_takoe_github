@@ -65,13 +65,20 @@ class MARSClassifier:
         ok = (lo >= self.min_leaf) & (v.size - lo >= self.min_leaf)
         return k[ok]
 
+    TOL = 1e-7
+
     def _forward(self, X, y):
+        """Прямой проход. Базис B поддерживается полного ранга: новая функция добавляется, только
+        если она не выражается через уже выбранные (иначе, например, пара шарниров на втором узле
+        того же признака линейно зависима: h⁺(t₂) − h⁻(t₂) = h⁺(t₁) − h⁻(t₁) + (t₁ − t₂)·1).
+        Q — ортонормированный базис span(B), обновляется по одному столбцу (Грам–Шмидт ×2)."""
         n, p = X.shape
         basis = [Hinge()]
         B = np.ones((n, 1))
-        Q, _ = np.linalg.qr(B)
+        Q = B / np.sqrt(n)
         r = y - Q @ (Q.T @ y)
-        while len(basis) + 2 <= self.max_terms:
+        banned = set()
+        while len(basis) < self.max_terms:
             best = (1e-12, None)
             for bi, b in enumerate(basis):
                 if len(b.terms) >= self.max_degree:
@@ -82,22 +89,25 @@ class MARSClassifier:
                     if j in b.vars():
                         continue
                     knots = self._knots(X[:, j], mask)
+                    knots = np.array([k for k in knots if (bi, j, k) not in banned])
                     if knots.size == 0:
                         continue
                     xj = X[:, j][:, None]
                     C1 = bcol[:, None] * np.maximum(0, xj - knots[None, :])
                     C2 = bcol[:, None] * np.maximum(0, knots[None, :] - xj)
-                    # ортогонализуем кандидатов к текущему базису
                     R1 = C1 - Q @ (Q.T @ C1)
                     R2 = C2 - Q @ (Q.T @ C2)
+                    n1 = (C1 * C1).sum(0); n2 = (C2 * C2).sum(0)
                     a11 = (R1 * R1).sum(0); a22 = (R2 * R2).sum(0); a12 = (R1 * R2).sum(0)
+                    ok1 = a11 > self.TOL * (n1 + 1e-30); ok2 = a22 > self.TOL * (n2 + 1e-30)
                     b1 = R1.T @ r; b2 = R2.T @ r
                     det = a11 * a22 - a12 ** 2
                     with np.errstate(divide="ignore", invalid="ignore"):
-                        gain = (a22 * b1 ** 2 - 2 * a12 * b1 * b2 + a11 * b2 ** 2) / det
-                        g1 = np.where(a11 > 1e-10, b1 ** 2 / a11, 0)   # если вторая половина вырождена
-                    gain = np.where(det > 1e-10 * (a11 * a22 + 1e-30), gain, g1)
-                    gain = np.nan_to_num(gain)
+                        g12 = (a22 * b1 ** 2 - 2 * a12 * b1 * b2 + a11 * b2 ** 2) / det
+                        g1 = np.where(ok1, b1 ** 2 / a11, 0)
+                        g2 = np.where(ok2, b2 ** 2 / a22, 0)
+                    full = ok1 & ok2 & (det > self.TOL * (a11 * a22 + 1e-30))
+                    gain = np.nan_to_num(np.where(full, g12, np.maximum(g1, g2)))
                     k = int(np.argmax(gain))
                     if gain[k] > best[0]:
                         best = (gain[k], (bi, j, knots[k]))
@@ -105,15 +115,25 @@ class MARSClassifier:
                 break
             bi, j, t = best[1]
             parent = basis[bi]
+            added = 0
             for s in (+1, -1):
+                if len(basis) >= self.max_terms:
+                    break
                 h = Hinge(parent.terms + ((j, t, s),))
                 col = h.eval(X)
-                if col.std() < 1e-12:
-                    continue
+                v = col - Q @ (Q.T @ col)
+                v = v - Q @ (Q.T @ v)                      # повторная ортогонализация
+                if np.linalg.norm(v) <= np.sqrt(self.TOL) * (np.linalg.norm(col) + 1e-30):
+                    continue                               # линейно зависима — не добавляем
                 basis.append(h)
                 B = np.column_stack([B, col])
-            Q, _ = np.linalg.qr(B)
+                Q = np.column_stack([Q, v / np.linalg.norm(v)])
+                added += 1
+            banned.add((bi, j, t))
+            if not added:
+                continue
             r = y - Q @ (Q.T @ y)
+        self.forward_rank_ = int(np.linalg.matrix_rank(B))
         return basis, B
 
     # ------------------------------------------------------------------ обратный проход

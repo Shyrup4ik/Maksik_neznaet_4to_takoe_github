@@ -32,8 +32,21 @@ class Prep:
             out[g] = X[fs].isna().all(axis=1).astype(float)
         return out[self.names].to_numpy()
 
+    def imputed_share(self, df):
+        """Доля входных признаков модели, подставленных медианой (их не было в данных)."""
+        X = df.reindex(columns=self.feats).astype(float)
+        return X.isna().mean(axis=1).to_numpy()
+
+
+def no_inputs(df):
+    """Строки, где нет ни отчётности, ни котировок: оценка была бы построена на одних подстановках."""
+    fin = df.reindex(columns=["current_ratio", "equity_ratio", "debt_to_assets"]).notna().any(axis=1)
+    mkt = df.reindex(columns=["mkt_price_med"]).notna().any(axis=1)
+    return (~fin & ~mkt).to_numpy()
+
 
 class AltmanFixed:
+    kind = "Altman"
     name = "Altman Z'' (классика)"
 
     def fit(self, df):
@@ -51,6 +64,7 @@ class AltmanFixed:
 
 
 class AltmanLogit:
+    kind = "Altman"
     name = "Altman-логит (переоценка весов)"
 
     def fit(self, df):
@@ -67,6 +81,8 @@ class AltmanLogit:
 
 
 class MarsModel:
+    kind = "MARS"
+
     def __init__(self, name, feats, need_fin=False, **kw):
         self.name, self.feats, self.need_fin, self.kw = name, feats, need_fin, kw
 
@@ -78,5 +94,29 @@ class MarsModel:
     def predict(self, df):
         p = self.m.predict_proba(self.prep.transform(df))[:, 1]
         if self.need_fin:
-            p[df["current_ratio"].isna().to_numpy() & df["equity_ratio"].isna().to_numpy()] = np.nan
+            p[df.reindex(columns=["current_ratio"]).iloc[:, 0].isna().to_numpy() &
+              df.reindex(columns=["equity_ratio"]).iloc[:, 0].isna().to_numpy()] = np.nan
+        p[no_inputs(df)] = np.nan
+        return p
+
+
+class LogitModel:
+    """Логистическая регрессия на тех же входах, что и полный MARS: отделяет вклад
+    кусочно-линейной формы MARS от вклада набора признаков."""
+    kind = "logit"
+
+    def __init__(self, name, feats, C=0.5):
+        self.name, self.feats, self.C = name, feats, C
+
+    def fit(self, df):
+        self.prep = Prep(self.feats).fit(df)
+        X = self.prep.transform(df)
+        self.mu, self.sd = X.mean(0), X.std(0) + 1e-9
+        self.lr = LogisticRegression(C=self.C, max_iter=5000).fit((X - self.mu) / self.sd, df.y.astype(int))
+        return self
+
+    def predict(self, df):
+        X = (self.prep.transform(df) - self.mu) / self.sd
+        p = self.lr.predict_proba(X)[:, 1]
+        p[no_inputs(df)] = np.nan
         return p

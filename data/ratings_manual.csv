@@ -1,1 +1,35 @@
-company,date,agency,rating
+company,inn,date,agency,rating,source
+Самолет,9731004688,2020-10-07,Эксперт РА,ruA-,https://raexpert.ru/database/companies/1000036040
+Самолет,9731004688,2021-10-07,Эксперт РА,ruA-,https://raexpert.ru/database/companies/1000036040
+Самолет,9731004688,2022-10-07,Эксперт РА,ruA-,https://raexpert.ru/database/companies/1000036040
+Самолет,9731004688,2023-02-20,Эксперт РА,WD,https://raexpert.ru/database/companies/1000036040
+Самолет,9731004688,2026-10-08,АКРА,BBB(RU),https://investfuture.ru/articles/akra-ponizilo-reyting-samoleta-do-bbb-ru-i-dalo-negativniy-prognoz
+Самолет,9731004688,2026-10-15,НКР,BBB.ru,https://investfuture.ru/articles/nkr-ponizilo-reyting-samoleta-do-bbb-ru-s-negativnym-prognozom
+Балтийский лизинг,7826705374,2018-12-19,Эксперт РА,ruA,https://raexpert.ru/database/companies/baltiiskii_lizing
+Балтийский лизинг,7826705374,2019-12-17,Эксперт РА,ruA,https://raexpert.ru/database/companies/baltiiskii_lizing
+Балтийский лизинг,7826705374,2020-11-30,Эксперт РА,ruA+,https://raexpert.ru/database/companies/baltiiskii_lizing
+Балтийский лизинг,7826705374,2021-11-11,Эксперт РА,ruA+,https://raexpert.ru/database/companies/baltiiskii_lizing
+Балтийский лизинг,7826705374,2022-10-31,Эксперт РА,ruA+,https://raexpert.ru/database/companies/baltiiskii_lizing
+Балтийский лизинг,7826705374,2023-07-03,Эксперт РА,ruAA-,https://raexpert.ru/database/companies/baltiiskii_lizing
+Балтийский лизинг,7826705374,2024-02-15,Эксперт РА,ruAA-,https://raexpert.ru/database/companies/baltiiskii_lizing
+Балтийский лизинг,7826705374,2025-01-31,Эксперт РА,ruAA-,https://raexpert.ru/database/companies/baltiiskii_lizing
+Балтийский лизинг,7826705374,2026-01-28,Эксперт РА,ruAA-,https://raexpert.ru/database/companies/baltiiskii_lizing
+ЛСР,7838360491,2019-01-24,Эксперт РА,ruA,https://raexpert.ru/database/companies/gruppa_lsr/
+ЛСР,7838360491,2020-01-23,Эксперт РА,ruA,https://raexpert.ru/database/companies/gruppa_lsr/
+ЛСР,7838360491,2021-01-21,Эксперт РА,ruA,https://raexpert.ru/database/companies/gruppa_lsr/
+ЛСР,7838360491,2022-01-20,Эксперт РА,ruA,https://raexpert.ru/database/companies/gruppa_lsr/
+ЛСР,7838360491,2023-01-18,Эксперт РА,ruA,https://raexpert.ru/database/companies/gruppa_lsr/
+ЛСР,7838360491,2023-12-29,Эксперт РА,ruA,https://raexpert.ru/database/companies/gruppa_lsr/
+ЛСР,7838360491,2024-12-13,Эксперт РА,ruA,https://raexpert.ru/database/companies/gruppa_lsr/
+ЛСР,7838360491,2025-12-05,Эксперт РА,ruA,https://raexpert.ru/database/companies/gruppa_lsr/
+ДжетЛенд,7724451748,2023-12-20,Эксперт РА,ruBB+,https://raexpert.ru/database/companies/1000054924/mentions/
+ДжетЛенд,7724451748,2024-12-18,Эксперт РА,ruBB+,https://raexpert.ru/database/companies/1000054924/mentions/
+ДжетЛенд,7724451748,2025-12-12,Эксперт РА,WD,https://raexpert.ru/database/companies/1000054924/mentions/
+Лидер-Инвест,7705619586,2019-12-26,Эксперт РА,ruBBB+,https://raexpert.ru/database/companies/1000006995/mentions/
+Лидер-Инвест,7705619586,2020-05-21,Эксперт РА,ruBBB+,https://raexpert.ru/database/companies/1000006995/mentions/
+Лидер-Инвест,7705619586,2021-05-17,Эксперт РА,ruA-,https://raexpert.ru/database/companies/1000006995/mentions/
+Лидер-Инвест,7705619586,2022-05-16,Эксперт РА,ruA-,https://raexpert.ru/database/companies/1000006995/mentions/
+Лидер-Инвест,7705619586,2023-05-15,Эксперт РА,ruA-,https://raexpert.ru/database/companies/1000006995/mentions/
+Лидер-Инвест,7705619586,2024-05-06,Эксперт РА,ruA-,https://raexpert.ru/database/companies/1000006995/mentions/
+Лидер-Инвест,7705619586,2025-04-28,Эксперт РА,ruA-,https://raexpert.ru/database/companies/1000006995/mentions/
+Лидер-Инвест,7705619586,2026-04-17,Эксперт РА,ruBBB+,https://raexpert.ru/database/companies/1000006995/mentions/
